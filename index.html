@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Timer</title>
   <style>
     body {
@@ -18,7 +18,7 @@
       background: white;
       border-radius: 20px;
       padding: 30px;
-      width: 200px;
+      width: 240px;
       text-align: center;
       box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
     }
@@ -27,8 +27,21 @@
       font-size: 48px;
       font-weight: bold;
       margin-bottom: 10px;
-      border-bottom: 2px solid black;
-      padding-bottom: 10px;
+    }
+
+    .progress-bar-container {
+      background-color: #eee;
+      height: 10px;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: #4caf50;
+      width: 100%;
+      transition: width 0.5s ease;
     }
 
     .controls {
@@ -50,9 +63,9 @@
     }
 
     .cancel {
-      background: none;
-      color: grey;
-      cursor: default;
+      margin-top: 10px;
+      background-color: #f44336;
+      color: white;
     }
 
     .add, .subtract {
@@ -63,26 +76,35 @@
 <body>
   <div class="timer">
     <div class="time" id="time">03:00</div>
+    <div class="progress-bar-container">
+      <div id="progress" class="progress-bar"></div>
+    </div>
     <div class="controls">
       <button class="subtract" onclick="adjustTime(-60)">-</button>
       <button class="start" onclick="startTimer()">Start</button>
       <button class="add" onclick="adjustTime(60)">+</button>
     </div>
-    <div class="cancel">Cancel</div>
+    <button class="cancel" onclick="cancelTimer()">Cancel</button>
   </div>
 
   <script>
-    let totalSeconds = 180;
+    let defaultSeconds = 180;
+    let totalSeconds = defaultSeconds;
     let interval = null;
 
     function updateDisplay() {
       const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
       const seconds = String(totalSeconds % 60).padStart(2, '0');
       document.getElementById('time').textContent = `${minutes}:${seconds}`;
+
+      const progressPercent = (totalSeconds / defaultSeconds) * 100;
+      document.getElementById('progress').style.width = `${progressPercent}%`;
     }
 
     function adjustTime(seconds) {
-      totalSeconds = Math.max(0, totalSeconds + seconds);
+      if (interval !== null) return; // Prevent time adjustment while timer is running
+      defaultSeconds = Math.max(1, defaultSeconds + seconds); // Prevent zero or negative total time
+      totalSeconds = defaultSeconds;
       updateDisplay();
     }
 
@@ -99,8 +121,14 @@
       }, 1000);
     }
 
+    function cancelTimer() {
+      clearInterval(interval);
+      interval = null;
+      totalSeconds = defaultSeconds;
+      updateDisplay();
+    }
+
     updateDisplay();
   </script>
 </body>
 </html>
-
