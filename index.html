@@ -8,7 +8,7 @@
   <style>
 body {
 font-family: 'Montserrat', sans-serif;
-  background-color: #0f0f0f;
+  background-color: #191919;
   color: #f4f4f4;
   margin: 0;
   display: flex;
@@ -24,7 +24,7 @@ font-family: 'Montserrat', sans-serif;
   width: 275px;
   height: 275px;
   text-align: center;
-  box-shadow: 0 0 30px rgba(255, 214, 10, 0.1);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
   border: 1px solid #3B3B3B;
   display: flex;
   flex-direction: column;
@@ -54,14 +54,22 @@ font-family: 'Montserrat', sans-serif;
   background-color: #3B3B3B;
   height: 4px;
   border-radius: 3px;
-  overflow: hidden;
+  overflow: visible;
+  
 }
 
 .progress-bar {
   height: 100%;
-  background-color: #ffd600;
+  background-color: #FEBF02;
   width: 100%;
-  transition: width 0.4s ease-in-out;
+  transition: width 0.4s ease-in-out, box-shadow 0.4s ease-in-out;
+}
+.progress-bar.glow {
+  box-shadow:
+    0 0 5px #FEBF02,
+    0 0 10px #FEBF02,
+    0 0 20px #FEBF02,
+    0 0 40px #FEBF02;
 }
 
 .controls {
@@ -83,7 +91,7 @@ font-family: 'Montserrat', sans-serif;
 }
 
 .controls button:hover {
-  color: #ffd600;
+  color: #FEBF02;
 }
 
 .controls .start {
@@ -98,7 +106,7 @@ font-family: 'Montserrat', sans-serif;
 }
 
 .controls .start:hover {
-  background-color: #ffd600;
+  background-color: #FEBF02;
   color: #0f0f0f;
 }
 
@@ -115,14 +123,57 @@ font-family: 'Montserrat', sans-serif;
 }
 
 .cancel:hover {
-  color: #ffd600;
+  color: #FEBF02;
 }
+#time-input {
+  font-size: 55px;
+  font-weight: bold;
+  color: #F5F5F5;
+  background-color: transparent;
+  border: none;
+  text-align: center;
+  width: 100%;
+  outline: none;
+  height: 52px;
+  line-height: 52px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+    .bottom-buttons {
+   position:relative;
+  top: 15%;
+  left: 5%;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reset-button {
+  background: none;
+  border: none;
+  color: #ffd600;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  padding: 4px;
+}
+
+.bottom-buttons:hover .reset-button {
+  opacity: 1;
+}
+
+
 
   </style>
 </head>
 <body>
   <div class="timer">
-      <div class="time" id="time">01:00:00</div>
+<div class="time" id="time-container">
+  <span id="time-display">01:00:00</span>
+  <input id="time-input" type="text" style="display: none;" />
+</div>
     <div class="controls">
       <button onclick="adjustTime(-60)">–</button>
       <button class="start" onclick="toggleTimer()">Start</button>
@@ -131,7 +182,10 @@ font-family: 'Montserrat', sans-serif;
     <div class="progress-bar-container">
       <div id="progress" class="progress-bar"></div>
     </div>
-    <button class="cancel" onclick="cancelTimer()">Cancel</button>
+   <div class="bottom-buttons">
+  <button class="cancel" onclick="cancelTimer()">Cancel</button>
+  <button class="reset-button" onclick="resetTimer()">⟳</button>
+</div>
   </div>
 
   <script>
@@ -140,22 +194,18 @@ font-family: 'Montserrat', sans-serif;
     let interval = null;
     let lastHours = Math.floor(totalSeconds / 3600);
 
-    function updateDisplay() {
-      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-      const seconds = String(totalSeconds % 60).padStart(2, '0');
+   function updateDisplay() {
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
 
-      const timeElement = document.getElementById('time');
+  const timeDisplay = document.getElementById('time-display');
+  timeDisplay.textContent = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
 
-      timeElement.textContent = `${hours}:${minutes}:${seconds}`;
+  const progressPercent = (totalSeconds / defaultSeconds) * 100;
+  document.getElementById('progress').style.width = `${progressPercent}%`;
+}
 
-
-      timeElement.textContent = newHasHours ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
-      lastHours = parseInt(hours);
-
-      const progressPercent = (totalSeconds / defaultSeconds) * 100;
-      document.getElementById('progress').style.width = `${progressPercent}%`;
-    }
 
     function adjustTime(seconds) {
       if (interval !== null) return;
@@ -164,34 +214,93 @@ font-family: 'Montserrat', sans-serif;
       updateDisplay();
     }
 
-    function toggleTimer() {
-      const startBtn = document.querySelector('.start');
+   function toggleTimer() {
+  const startBtn = document.querySelector('.start');
+  const progressBar = document.querySelector('.progress-bar'); // Reference to progress bar
 
-      if (interval === null) {
-        interval = setInterval(() => {
-          if (totalSeconds <= 0) {
-            clearInterval(interval);
-            interval = null;
-          } else {
-            totalSeconds--;
-            updateDisplay();
-          }
-        }, 1000);
-        startBtn.textContent = 'Pause';
-      } else {
+  if (interval === null) {
+    interval = setInterval(() => {
+      if (totalSeconds <= 0) {
         clearInterval(interval);
         interval = null;
-        startBtn.textContent = 'Start';
+      } else {
+        totalSeconds--;
+        updateDisplay();
       }
-    }
+    }, 1000);
 
-    function cancelTimer() {
-      clearInterval(interval);
-      interval = null;
+    startBtn.textContent = 'Pause';
+
+    // Add the 'glow' class to progress bar when the timer starts
+    progressBar.classList.add('glow');
+  } else {
+    clearInterval(interval);
+    interval = null;
+    startBtn.textContent = 'Start';
+
+    // Remove the 'glow' class when the timer pauses
+    progressBar.classList.remove('glow');
+  }
+}
+
+function cancelTimer() {
+  clearInterval(interval);
+  interval = null;
+  totalSeconds = defaultSeconds;
+  updateDisplay();
+  document.querySelector('.start').textContent = 'Start';
+  
+  // Remove glow effect on cancel (timer stops)
+  document.querySelector('.progress-bar').classList.remove('glow');
+}
+const timeContainer = document.getElementById('time-container');
+const timeDisplay = document.getElementById('time-display');
+const timeInput = document.getElementById('time-input');
+
+// Show input on click
+timeDisplay.addEventListener('click', () => {
+  timeInput.value = timeDisplay.textContent;
+  timeDisplay.style.display = 'none';
+  timeInput.style.display = 'inline-block';
+  timeInput.focus();
+});
+
+// On Enter or blur, update the time
+function parseTimeInput(value) {
+  const parts = value.split(':').map(p => parseInt(p, 10));
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  } else if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  return null;
+}
+
+timeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const newSeconds = parseTimeInput(timeInput.value);
+    if (newSeconds !== null) {
+      defaultSeconds = Math.max(1, newSeconds);
       totalSeconds = defaultSeconds;
       updateDisplay();
-      document.querySelector('.start').textContent = 'Start';
     }
+    timeInput.blur();
+  }
+});
+
+timeInput.addEventListener('blur', () => {
+  timeDisplay.style.display = 'inline-block';
+  timeInput.style.display = 'none';
+});
+function resetTimer() {
+  clearInterval(interval);
+  interval = null;
+  defaultSeconds = 3600;
+  totalSeconds = defaultSeconds;
+  updateDisplay();
+  document.querySelector('.start').textContent = 'Start';
+}
+
 
     updateDisplay();
   </script>
