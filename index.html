@@ -187,72 +187,78 @@ font-family: 'Montserrat', sans-serif;
     </div>
   </div>
 
-  <script>
+<script>
 let defaultSeconds = 3600;
 let totalSeconds = defaultSeconds;
 let interval = null;
-let isRunning = false;
 let startTimestamp = null;
 
 function updateDisplay() {
-  const displaySeconds = Math.max(0, totalSeconds);
-  const hours = String(Math.floor(displaySeconds / 3600)).padStart(2, '0');
-  const minutes = String(Math.floor((displaySeconds % 3600) / 60)).padStart(2, '0');
-  const seconds = String(displaySeconds % 60).padStart(2, '0');
+  const now = Date.now();
+
+  if (startTimestamp) {
+    const elapsed = Math.floor((now - startTimestamp) / 1000);
+    totalSeconds = Math.max(0, defaultSeconds - elapsed);
+  }
+
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
 
   const timeDisplay = document.getElementById('time-display');
   timeDisplay.textContent = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
 
-  const progressPercent = (displaySeconds / defaultSeconds) * 100;
+  const progressPercent = (totalSeconds / defaultSeconds) * 100;
   document.getElementById('progress').style.width = `${progressPercent}%`;
 }
 
-function tick() {
-  if (isRunning && startTimestamp) {
-    const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
-    totalSeconds = Math.max(0, defaultSeconds - elapsed);
-    updateDisplay();
-
-    if (totalSeconds <= 0) {
-      clearInterval(interval);
-      interval = null;
-      isRunning = false;
-    }
-  }
-}
-
-function startTimer() {
-  startTimestamp = Date.now() - (defaultSeconds - totalSeconds) * 1000;
-  interval = setInterval(tick, 1000);
-  isRunning = true;
-  document.querySelector('.start').textContent = 'Pause';
-  document.querySelector('.progress-bar').classList.add('glow');
-}
-
-function pauseTimer() {
-  clearInterval(interval);
-  interval = null;
-  const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
-  totalSeconds = Math.max(0, defaultSeconds - elapsed);
-  isRunning = false;
-  document.querySelector('.start').textContent = 'Start';
-  document.querySelector('.progress-bar').classList.remove('glow');
+function adjustTime(seconds) {
+  if (interval) return; // Prevent adjustments while timer is running
+  defaultSeconds = Math.max(1, defaultSeconds + seconds);
+  totalSeconds = defaultSeconds;
+  startTimestamp = null;
+  updateDisplay();
+  saveState();
 }
 
 function toggleTimer() {
-  if (!isRunning) {
-    startTimer();
+  const startBtn = document.querySelector('.start');
+  const progressBar = document.querySelector('.progress-bar');
+
+  if (!interval) {
+    if (!startTimestamp) {
+      startTimestamp = Date.now();
+    }
+
+    interval = setInterval(() => {
+      updateDisplay();
+      if (totalSeconds <= 0) {
+        clearInterval(interval);
+        interval = null;
+        startTimestamp = null;
+        saveState();
+      }
+    }, 1000);
+
+    startBtn.textContent = 'Pause';
+    progressBar.classList.add('glow');
+    saveState();
   } else {
-    pauseTimer();
+    clearInterval(interval);
+    interval = null;
+    defaultSeconds = totalSeconds;
+    startTimestamp = null;
+
+    startBtn.textContent = 'Start';
+    progressBar.classList.remove('glow');
+    saveState();
   }
-  saveState();
 }
 
 function cancelTimer() {
   clearInterval(interval);
   interval = null;
   totalSeconds = defaultSeconds;
-  isRunning = false;
   startTimestamp = null;
   updateDisplay();
   document.querySelector('.start').textContent = 'Start';
@@ -265,23 +271,12 @@ function resetTimer() {
   interval = null;
   defaultSeconds = 3600;
   totalSeconds = defaultSeconds;
-  isRunning = false;
   startTimestamp = null;
   updateDisplay();
   document.querySelector('.start').textContent = 'Start';
   document.querySelector('.progress-bar').classList.remove('glow');
   saveState();
 }
-
-const timeDisplay = document.getElementById('time-display');
-const timeInput = document.getElementById('time-input');
-
-timeDisplay.addEventListener('click', () => {
-  timeInput.value = timeDisplay.textContent;
-  timeDisplay.style.display = 'none';
-  timeInput.style.display = 'inline-block';
-  timeInput.focus();
-});
 
 function parseTimeInput(value) {
   const parts = value.split(':').map(p => parseInt(p, 10));
@@ -293,15 +288,24 @@ function parseTimeInput(value) {
   return null;
 }
 
+// Handle input toggle
+const timeContainer = document.getElementById('time-container');
+const timeDisplay = document.getElementById('time-display');
+const timeInput = document.getElementById('time-input');
+
+timeDisplay.addEventListener('click', () => {
+  timeInput.value = timeDisplay.textContent;
+  timeDisplay.style.display = 'none';
+  timeInput.style.display = 'inline-block';
+  timeInput.focus();
+});
+
 timeInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     const newSeconds = parseTimeInput(timeInput.value);
     if (newSeconds !== null) {
       defaultSeconds = Math.max(1, newSeconds);
       totalSeconds = defaultSeconds;
-      isRunning = false;
-      clearInterval(interval);
-      interval = null;
       startTimestamp = null;
       updateDisplay();
       saveState();
@@ -315,34 +319,42 @@ timeInput.addEventListener('blur', () => {
   timeInput.style.display = 'none';
 });
 
+// Persistent state save/load
 function saveState() {
-  localStorage.setItem('luxuryTimerDefault', defaultSeconds);
-  localStorage.setItem('luxuryTimerRunning', isRunning);
-  localStorage.setItem('luxuryTimerStart', startTimestamp);
+  localStorage.setItem('timer-default', defaultSeconds);
+  localStorage.setItem('timer-startTimestamp', startTimestamp || '');
 }
 
 function loadState() {
-  const savedDefault = parseInt(localStorage.getItem('luxuryTimerDefault'));
-  const savedRunning = localStorage.getItem('luxuryTimerRunning') === 'true';
-  const savedStart = parseInt(localStorage.getItem('luxuryTimerStart'));
+  const storedDefault = parseInt(localStorage.getItem('timer-default'));
+  const storedStart = parseInt(localStorage.getItem('timer-startTimestamp'));
 
-  if (!isNaN(savedDefault)) defaultSeconds = savedDefault;
-  if (!isNaN(savedStart)) startTimestamp = savedStart;
-
-  if (savedRunning && savedStart) {
-    const elapsed = Math.floor((Date.now() - savedStart) / 1000);
-    totalSeconds = Math.max(0, defaultSeconds - elapsed);
-    startTimer(); // auto-resume
-  } else {
+  if (!isNaN(storedDefault)) {
+    defaultSeconds = storedDefault;
     totalSeconds = defaultSeconds;
   }
 
-  updateDisplay();
+  if (!isNaN(storedStart) && storedStart > 0) {
+    startTimestamp = storedStart;
+    interval = setInterval(() => {
+      updateDisplay();
+      if (totalSeconds <= 0) {
+        clearInterval(interval);
+        interval = null;
+        startTimestamp = null;
+        saveState();
+      }
+    }, 1000);
+
+    document.querySelector('.start').textContent = 'Pause';
+    document.querySelector('.progress-bar').classList.add('glow');
+  }
 }
 
-window.addEventListener('load', loadState);
-window.addEventListener('beforeunload', saveState);
+loadState();
+updateDisplay();
 </script>
+
 
 </body>
 </html>
