@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Luxury Timer</title>
-<link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
+  <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
   <style>
 body {
 font-family: 'Montserrat', sans-serif;
-  background-color: #191919;
+  background-color: #FEBF02;
   color: #f4f4f4;
   margin: 0;
   display: flex;
@@ -165,15 +165,14 @@ font-family: 'Montserrat', sans-serif;
 }
 
 
-
   </style>
 </head>
 <body>
   <div class="timer">
-<div class="time" id="time-container">
-  <span id="time-display">01:00:00</span>
-  <input id="time-input" type="text" style="display: none;" />
-</div>
+    <div class="time" id="time-container">
+      <span id="time-display">01:00:00</span>
+      <input id="time-input" type="text" style="display: none;" />
+    </div>
     <div class="controls">
       <button onclick="adjustTime(-60)">–</button>
       <button class="start" onclick="toggleTimer()">Start</button>
@@ -182,126 +181,155 @@ font-family: 'Montserrat', sans-serif;
     <div class="progress-bar-container">
       <div id="progress" class="progress-bar"></div>
     </div>
-   <div class="bottom-buttons">
-  <button class="cancel" onclick="cancelTimer()">Cancel</button>
-  <button class="reset-button" onclick="resetTimer()">⟳</button>
-</div>
+    <div class="bottom-buttons">
+      <button class="cancel" onclick="cancelTimer()">Cancel</button>
+      <button class="reset-button" onclick="resetTimer()">⟳</button>
+    </div>
   </div>
 
   <script>
     let defaultSeconds = 3600;
     let totalSeconds = defaultSeconds;
     let interval = null;
-    let lastHours = Math.floor(totalSeconds / 3600);
+    let isRunning = false;
 
-   function updateDisplay() {
-  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-  const seconds = String(totalSeconds % 60).padStart(2, '0');
+    function updateDisplay() {
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
 
-  const timeDisplay = document.getElementById('time-display');
-  timeDisplay.textContent = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
+      const timeDisplay = document.getElementById('time-display');
+      timeDisplay.textContent = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
 
-  const progressPercent = (totalSeconds / defaultSeconds) * 100;
-  document.getElementById('progress').style.width = `${progressPercent}%`;
-}
-
+      const progressPercent = (totalSeconds / defaultSeconds) * 100;
+      document.getElementById('progress').style.width = `${progressPercent}%`;
+    }
 
     function adjustTime(seconds) {
       if (interval !== null) return;
       defaultSeconds = Math.max(1, defaultSeconds + seconds);
       totalSeconds = defaultSeconds;
       updateDisplay();
+      saveState();
     }
 
-   function toggleTimer() {
-  const startBtn = document.querySelector('.start');
-  const progressBar = document.querySelector('.progress-bar'); // Reference to progress bar
+    function toggleTimer() {
+      const startBtn = document.querySelector('.start');
+      const progressBar = document.querySelector('.progress-bar');
 
-  if (interval === null) {
-    interval = setInterval(() => {
-      if (totalSeconds <= 0) {
+      if (interval === null) {
+        interval = setInterval(() => {
+          if (totalSeconds <= 0) {
+            clearInterval(interval);
+            interval = null;
+            isRunning = false;
+            saveState();
+          } else {
+            totalSeconds--;
+            updateDisplay();
+            saveState();
+          }
+        }, 1000);
+
+        startBtn.textContent = 'Pause';
+        progressBar.classList.add('glow');
+        isRunning = true;
+      } else {
         clearInterval(interval);
         interval = null;
-      } else {
-        totalSeconds--;
-        updateDisplay();
+        startBtn.textContent = 'Start';
+        progressBar.classList.remove('glow');
+        isRunning = false;
       }
-    }, 1000);
 
-    startBtn.textContent = 'Pause';
-
-    // Add the 'glow' class to progress bar when the timer starts
-    progressBar.classList.add('glow');
-  } else {
-    clearInterval(interval);
-    interval = null;
-    startBtn.textContent = 'Start';
-
-    // Remove the 'glow' class when the timer pauses
-    progressBar.classList.remove('glow');
-  }
-}
-
-function cancelTimer() {
-  clearInterval(interval);
-  interval = null;
-  totalSeconds = defaultSeconds;
-  updateDisplay();
-  document.querySelector('.start').textContent = 'Start';
-  
-  // Remove glow effect on cancel (timer stops)
-  document.querySelector('.progress-bar').classList.remove('glow');
-}
-const timeContainer = document.getElementById('time-container');
-const timeDisplay = document.getElementById('time-display');
-const timeInput = document.getElementById('time-input');
-
-// Show input on click
-timeDisplay.addEventListener('click', () => {
-  timeInput.value = timeDisplay.textContent;
-  timeDisplay.style.display = 'none';
-  timeInput.style.display = 'inline-block';
-  timeInput.focus();
-});
-
-// On Enter or blur, update the time
-function parseTimeInput(value) {
-  const parts = value.split(':').map(p => parseInt(p, 10));
-  if (parts.length === 3) {
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  } else if (parts.length === 2) {
-    return parts[0] * 60 + parts[1];
-  }
-  return null;
-}
-
-timeInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    const newSeconds = parseTimeInput(timeInput.value);
-    if (newSeconds !== null) {
-      defaultSeconds = Math.max(1, newSeconds);
-      totalSeconds = defaultSeconds;
-      updateDisplay();
+      saveState();
     }
-    timeInput.blur();
-  }
-});
 
-timeInput.addEventListener('blur', () => {
-  timeDisplay.style.display = 'inline-block';
-  timeInput.style.display = 'none';
-});
-function resetTimer() {
-  clearInterval(interval);
-  interval = null;
-  defaultSeconds = 3600;
-  totalSeconds = defaultSeconds;
-  updateDisplay();
-  document.querySelector('.start').textContent = 'Start';
-}
+    function cancelTimer() {
+      clearInterval(interval);
+      interval = null;
+      totalSeconds = defaultSeconds;
+      isRunning = false;
+      updateDisplay();
+      document.querySelector('.start').textContent = 'Start';
+      document.querySelector('.progress-bar').classList.remove('glow');
+      saveState();
+    }
 
+    function resetTimer() {
+      clearInterval(interval);
+      interval = null;
+      defaultSeconds = 3600;
+      totalSeconds = defaultSeconds;
+      isRunning = false;
+      updateDisplay();
+      document.querySelector('.start').textContent = 'Start';
+      document.querySelector('.progress-bar').classList.remove('glow');
+      saveState();
+    }
 
+    const timeDisplay = document.getElementById('time-display');
+    const timeInput = document.getElementById('time-input');
+
+    timeDisplay.addEventListener('click', () => {
+      timeInput.value = timeDisplay.textContent;
+      timeDisplay.style.display = 'none';
+      timeInput.style.display = 'inline-block';
+      timeInput.focus();
+    });
+
+    function parseTimeInput(value) {
+      const parts = value.split(':').map(p => parseInt(p, 10));
+      if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      } else if (parts.length === 2) {
+        return parts[0] * 60 + parts[1];
+      }
+      return null;
+    }
+
+    timeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const newSeconds = parseTimeInput(timeInput.value);
+        if (newSeconds !== null) {
+          defaultSeconds = Math.max(1, newSeconds);
+          totalSeconds = defaultSeconds;
+          updateDisplay();
+          saveState();
+        }
+        timeInput.blur();
+      }
+    });
+
+    timeInput.addEventListener('blur', () => {
+      timeDisplay.style.display = 'inline-block';
+      timeInput.style.display = 'none';
+    });
+
+    function saveState() {
+      localStorage.setItem('luxuryTimerSeconds', totalSeconds);
+      localStorage.setItem('luxuryTimerRunning', isRunning);
+      localStorage.setItem('luxuryTimerDefault', defaultSeconds);
+    }
+
+    function loadState() {
+      const savedSeconds = parseInt(localStorage.getItem('luxuryTimerSeconds'));
+      const savedRunning = localStorage.getItem('luxuryTimerRunning') === 'true';
+      const savedDefault = parseInt(localStorage.getItem('luxuryTimerDefault'));
+
+      if (!isNaN(savedSeconds)) totalSeconds = savedSeconds;
+      if (!isNaN(savedDefault)) defaultSeconds = savedDefault;
+      isRunning = savedRunning;
+
+      updateDisplay();
+
+      if (isRunning) {
+        toggleTimer(); // Start if previously running
+      }
+    }
+
+    window.addEventListener('load', loadState);
+    window.addEventListener('beforeunload', saveState);
     updateDisplay();
   </script>
 </body>
